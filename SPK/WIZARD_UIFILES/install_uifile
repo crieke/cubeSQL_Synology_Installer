@@ -1,0 +1,25 @@
+[{
+	"step_title": "Before installing...",
+	"items": [{
+		"type": "multiselect",
+		"desc": "Please make sure you have created a shared folder \"cubeSQL\". Otherwise the package won't launch after installation. Your databases and database exports will be stored and can be accessed there.",
+                "subitems": [{
+					"key": "WIZARD_SHARED_FOLDER",
+					"desc": "cubeSQL share has been created.",
+					"validator": {
+						"fn": "{var v=arguments[0]; if (!v) return 'Create a shared folder \"cubeSQL\" before you continue and confirm this by clicking the checkbox.';return true;}"
+			}
+		}]
+	}]
+}, {
+	"step_title": "Specify cubeSQL URL.",
+	"items": [{
+		"type": "textfield",
+		"desc": "Please specify the cubeSQL download URL.",
+                "subitems": [{
+					"key": "WIZARD_DL_URL",
+					"desc": " ",
+					"defaultValue": "http://www.sqlabs.com/download/cubesql/latest/cubesql_complete.zip" 
+		}]
+	}]
+}]

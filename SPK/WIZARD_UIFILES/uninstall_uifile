@@ -1,0 +1,14 @@
+[{
+	"step_title": "Remove cubeSQL?",
+	"items": [{
+                "type": "multiselect",
+                "desc": "Do you really want to remove cubeSQL?",
+                "subitems": [{
+                        "key": "confirm_cubesql_remove",
+                        "desc": "Yes, remove cubeSQL.",
+               			"validator": {
+			   				"fn": "{var v=arguments[0]; if (!v) return 'Are you sure you want to remove cubeSQL from this device?';return true;}"
+			   			}
+				}]
+	}]
+}]

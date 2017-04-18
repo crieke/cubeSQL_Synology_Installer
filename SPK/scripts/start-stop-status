@@ -1,0 +1,153 @@
+#!/bin/sh
+
+# Package
+PACKAGE="cubeSQL"
+USER="root"
+SPK_ROOT="/var/packages/${PACKAGE}/target"
+DATAROOT=`/var/packages/${PACKAGE}/scripts/getsharelocation.sh ${PACKAGE}`	
+LOG_FILE="${SPK_ROOT}/cubesql.log"
+PIDFILE="${DATAROOT}/databases/cubesql.pid"
+ARCH=`( uname -m )`
+SYNO_MODEL=`cat /etc/synoinfo.conf | grep upnpmodelname | cut -d '"' -f2`
+SYNO_SERIAL=`sysctl -a | grep "kernel.syno_serial"|  awk '{print $3}'`
+SYNO_VERSION=`cat /etc/VERSION | grep productversion | cut -d '"' -f2 | cut -d '"' -f1`
+SYNO_SMALL_FIX=`cat /etc/VERSION | grep smallfixnumber | cut -d '"' -f2 | cut -d '"' -f1`
+SYNO_SPK_VER=`cat /var/packages/${PACKAGE}/INFO | grep "version=" | cut -d "\"" -f 2`
+MTU=`ifconfig | grep eth[0-9] -A1 | grep MTU | grep MTU | cut -d ":" -f 2 | awk '{print $1}' | xargs | sed "s/ ---- /\n---- /g"`
+DEBUG_EXTERNAL_LOG="${DATAROOT}/CUBESQL_DEBUG_EXTERNAL_LOG.txt"
+
+if [[ -f $DEBUG_EXTERNAL_LOG ]]; then
+    LOG_FILE=$DEBUG_EXTERNAL_LOG
+fi
+
+ST_COLOR="\033[38;5;34m"
+HL_COLOR="\033[38;5;197m"
+REG_COLOR="\033[0m"
+
+if [ -f ${PIDFILE} ]; then
+    PID=`cat "${PIDFILE}"`
+fi
+
+if [ "${ARCH}" == "x86_64" ]; then
+	CPU="64bit";
+elif [ "${ARCH}" == "i686" ]; then
+	CPU="32bit";
+elif [ "${ARCH}" == "i386" ]; then
+	CPU="32bit";
+else
+	CPU="unsupported"
+fi
+
+## Log Function
+echolog(){
+    TIMESTAMP=$(date +%d.%m.%y-%H:%M:%S)
+    if [[ $# == 2 ]]; then
+        PARAMETER1=$1
+        PARAMETER2=$2
+        echo -e "${ST_COLOR}${TIMESTAMP}${REG_COLOR} --- ${HL_COLOR}${PARAMETER1}:${REG_COLOR} ${PARAMETER2}"
+        echo "${TIMESTAMP} --- ${PARAMETER1}: ${PARAMETER2}" >> $LOG_FILE
+    elif [[ $# == 1 ]]; then
+        PARAMETER1=$1
+        echo -e "${ST_COLOR}${TIMESTAMP}${REG_COLOR} --- ${PARAMETER1}"
+        echo "${TIMESTAMP} --- ${PARAMETER1}" >> $LOG_FILE
+    else
+        echo -e "The echolog function requires 1 or 2 parameters."
+    fi
+}
+
+if [[ $SYNO_SMALL_FIX -gt 0 ]]; then
+   SYNO_SMALL_FIX="(Update ${SYNO_SMALL_FIX})"
+else
+   SYNO_SMALL_FIX="";
+fi
+
+info ()
+{
+   ## Echoing System Info
+    echolog "DATAROOT" "${DATAROOT}"
+    echolog "PACKAGE_DIR" "${SPK_ROOT}"
+	echolog "Model" "${SYNO_MODEL}"
+    echolog "Synology Serial" "${SYNO_SERIAL}"
+    echolog "Architecture" "${ARCH}"
+    echolog "DSM Version" "${SYNO_VERSION} ${SYNO_SMALL_FIX}"
+    echolog "PKG Version" "${SYNO_SPK_VER}"
+    echolog "Hostname" "${HOSTNAME}"
+    echolog "MTU" "${MTU}"
+}
+
+start_daemon ()
+{
+	info
+    if [ "${DATAROOT}" != "" ]; then
+
+	    if [ ! -d "${DATAROOT}"/settings ]; then
+		    mkdir "${DATAROOT}"/settings
+		    echolog "Settings folder has been created." 
+	    else
+	    	echolog "Settings folder exists."
+	fi
+
+        "${SPK_ROOT}"/"${PACKAGE}"/core/Linux/"${CPU}"/cubesql -x "${DATAROOT}"/databases -s "${DATAROOT}/settings/cubesql.settings" | tee -a ${LOG_FILE} &
+    fi
+}
+
+stop_daemon ()
+{
+    if [ -f "$PIDFILE" ]
+    then
+        kill "$PID"
+        while [ -e /proc/${PID} ]; do sleep 0.1; done
+        echolog "${PACKAGE} has been stopped."
+
+    fi
+
+}
+
+daemon_status ()
+{
+if [ ! -f "$PIDFILE" ]
+    then
+        return 1
+    fi
+    if [ -d /proc/"$PID" ]
+    then
+        return 0
+    else
+        return 1
+    fi
+}
+
+case $1 in
+    start)
+        if daemon_status; then
+            echo ${PACKAGE} is already running
+        else
+            echo "" > ${LOG_FILE}
+            echo Starting ${PACKAGE} ...
+            start_daemon
+        fi
+        ;;
+    stop)
+        if daemon_status; then
+            echo Stopping ${PACKAGE} ...
+            stop_daemon
+        else
+            echo ${PACKAGE} is not running
+        fi
+        ;;
+    status)
+        if daemon_status; then
+            echo ${PACKAGE} is running
+            exit 0
+        else
+            echo ${PACKAGE} is not running
+            exit 1
+        fi
+        ;;
+    log)
+        echo ${LOG_FILE}
+        ;;
+    *)
+        exit 1
+        ;;
+esac

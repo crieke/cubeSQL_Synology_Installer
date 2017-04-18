@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# Package
+PACKAGE="cubeSQL"
+# Others
+SSS="/var/packages/${PACKAGE}/scripts/start-stop-status"
+PKG_DIR="/var/packages/${PACKAGE}/target"
+PKG_URL="${WIZARD_DL_URL}"
+PKG_ARCHIVE="${PKG_URL##*/}"
+
+preinst ()
+{
+
+	TMP_DIR=`( mktemp -d /tmp/cube.XXXXXXXXXX)`
+   	pushd "${TMP_DIR}"
+	
+	curl -s -O "${PKG_URL}"
+	R=$?
+
+	if [ $R -eq 0 ]; then
+   		mkdir "${SYNOPKG_PKGINST_TEMP_DIR}"/"${PACKAGE}"
+		7z -y x "${PKG_ARCHIVE}" -o"${TMP_DIR}"
+		R=$?
+		rm -f "${TMP_DIR}/${PKG_ARCHIVE}"
+		mv ${TMP_DIR}/*/* "${SYNOPKG_PKGINST_TEMP_DIR}/${PACKAGE}"
+		rm -Rf "${TMP_DIR}"
+	else
+	    rm -f "${PKG_ARCHIVE}"
+	fi
+	
+	popd
+
+	if [ $R -ne 0 ]; then
+		echo "Could not download installation archive from ${PACKAGE} website. Please check your internet connection."
+	fi
+	return $R
+}
+
+postinst ()
+{
+	# This is a placeholder file that has been extracted from the required package.tgz archive.
+	rm "${PKG_DIR}"/DUMMY 
+
+	return 0
+}
+
+preuninst ()
+{
+    # Stop the package
+    ${SSS} stop > /dev/null
+    
+    exit 0
+    
+}
+
+postuninst ()
+{
+    # Delete Package directory if it contains nothing.
+    if [ ! -d "$(ls -A /usr/syno/etc/packages/${PACKAGE})" ]; then
+        rm -Rf /usr/syno/etc/packages/${PACKAGE}
+    fi
+
+    exit 0
+}
+
+preupgrade ()
+{
+    exit 0
+}
+
+postupgrade ()
+{
+    exit 0
+}
